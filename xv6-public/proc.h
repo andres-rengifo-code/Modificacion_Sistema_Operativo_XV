@@ -24,6 +24,9 @@ extern int ncpu;
 // The layout of the context matches the layout of the stack in swtch.S
 // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
+
+//ESTRUCUTURA LA CUAL PERMITE GUARDAR LOS DATOS DE UN PROCESO CUANDO SALE DE LA CPU PARA QUE DESPUES VOLVER A QUE LA CPU OBTENGA ESTOS 
+//DATOS PARA QUE PUEDA CONTINUAR EN EL PUNTO EN EL CUAL SE QUEDO 
 struct context {
   uint edi;
   uint esi;
@@ -32,18 +35,23 @@ struct context {
   uint eip;
 };
 
+//ESTRUCTURA LA CUAL DEFINE LOS ESTADOSD DE UN PROCESO
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+
 // Per-process state
+
+//DEFINE LA ESTRUCTURA DE UN PROCESO
+//DEFINIENDO LOS DATOS DE UN PROCESO
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
-  enum procstate state;        // Process state
+  enum procstate state;        // Process state <- PARA DEFINIR EN QUE ESTADO ESTA EL PROCESO ( FUNDAMENTAL PARA DEFINIR CUANDO SE PUEDE CORRER)
   int pid;                     // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
-  struct context *context;     // swtch() here to run process
+  struct context *context;     // swtch() here to run process <-PARA DEFINIR EL CONTEXTO O LOS DATOS DEL PROCESO (GUARDAR DATOS EN LOS QUUE VA AEL PROCESO)
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
