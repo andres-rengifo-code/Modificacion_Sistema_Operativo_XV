@@ -59,6 +59,14 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+    // --- Campos para medicion del planificador (MEDICION) ---
+  int t_created;          // Guarda el momento en el que un proceso fue creado sirve para depues calccular en que momento el proceso pudo entrar a la CPU (RESPONSE TIME RT)
+  int t_first_run;        // Guarda el momento en el que el proceso corrio por primera ves en la CPU (RESPONSE TIME) (-1 = aun no corrio)
+  int t_ready_start;      // Guarda desde cuando el proceso esta en RUNNABLE, para calcular cada periodo de espera puntual
+  int wait_time;          // Guarda todos los periodos de espera es decir suma todos los "t_ready_start" (WAITING TIME)
+  int n_context_switches; // Veces que el scheduler le dio la CPU
+  int t_completion;        // Momento en que el proceso termino (COMPLETION TIME)
 };
 
 // Process memory is laid out contiguously, low addresses first:

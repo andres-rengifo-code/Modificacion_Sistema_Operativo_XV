@@ -106,6 +106,15 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++; // le asigna un numero unico al proceso
 
+  // --- MEDICION: inicializa los contadores de medicion ---
+  // ticks : variable con la que se obtienen cuantas interrupciones de timer pasaron desde que arranco el sistema 
+  p->t_created = ticks; // Guardamos el valor de tickts en el momento en el que un proceso se creo
+  p->t_first_run = -1; // Guardamos -1 para identificar que aun no ah corriedo en la CPU 
+  p->t_ready_start = ticks; /// Guardamos este momento para definir desde cuando esta en RUNNABLE, ya que casi al instante de ser creado pasa a estar listo
+  p->wait_time = 0; // la espera de tiempo inicia en "0"
+  p->n_context_switches = 0; //El contador de veces que recibio la CPU arranca en "0"
+
+
   release(&ptable.lock); // suelta el candado para que otra funcion lo pueda utilizar
 
   // Allocate kernel stack.
@@ -270,35 +279,57 @@ int fork(void)
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
+
+//---------------------------------------------------------------------------------
+//FUNCION
+// limpia recursos (archivos, directorio), registra y reporta sus métricas finales, 
+// y se marca a sí mismo como terminado, cediendo la CPU para siempre.
+//--------------------------------------------------------------------------------
 void
 exit(void)
 {
-  struct proc *curproc = myproc();
+  struct proc *curproc = myproc(); // guarda el pproceso que llamo a exit
   struct proc *p;
   int fd;
-
-  if(curproc == initproc)
+  // EL proceso que quiere finnalizar no puede ser initproc
+  if(curproc == initproc) 
     panic("init exiting");
 
   // Close all open files.
+  // cierra todos los archivos que el proceso tenga abierto
   for(fd = 0; fd < NOFILE; fd++){
     if(curproc->ofile[fd]){
       fileclose(curproc->ofile[fd]);
       curproc->ofile[fd] = 0;
     }
   }
-
+  //libera el directorio 
   begin_op();
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
-
+  
+  //toma el cantado
   acquire(&ptable.lock);
+
+  // --- MEDICION: Guarda el momento en que el proceso termina ---
+  curproc->t_completion = ticks;
+
+  // --- MEDICIONN: imprime el resumen de metricas antes de morir ---
+  cprintf("[METRICAS] pid=%d arrival_time=%d completion_time=%d response_time=%dms waiting_time=%dms turnaround_time=%dms switches=%d\n",
+        curproc->pid,                                       // Identificador del proceso (PID)
+        curproc->t_created,                                 // Tiempo de llegada (AT)
+        curproc->t_completion,                               // Tiempo de finalizacion (CT)
+        (curproc->t_first_run - curproc->t_created) * 10,   // Tiempo de respuesta (RT)
+        curproc->wait_time * 10,                             // Tiempo de espera (WT)
+        (curproc->t_completion - curproc->t_created) * 10,  // Tiempo de retorno (TAT)
+        curproc->n_context_switches);                        // Cantidad de cambios de contexto
 
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
 
   // Pass abandoned children to init.
+  // si el proceso que voy a cerrar tiene proceso hijos enotnces le asigna estos pocesos a initproc
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
       p->parent = initproc;
@@ -308,6 +339,8 @@ exit(void)
   }
 
   // Jump into the scheduler, never to return.
+  // cambia el estado del proceso zombi
+  // termino pero esta ocupando un espacio en la tabla de pocesos
   curproc->state = ZOMBIE;
   sched();
   panic("zombie exit");
@@ -396,6 +429,21 @@ void scheduler(void)
       if(p->state != RUNNABLE)
         continue;
 
+      // ---MEDICION: justo antes de darle la CPU a este proceso ---
+
+      // Si es la primera vez que corre, registra el tiempo de respuesta
+      if(p->t_first_run == -1)
+        p->t_first_run = ticks;
+
+      // Acumula cuanto tiempo estuvo esperando desde la ultima vez
+      //calculando cuánto esperó el proceso esta vez en particular, y sumáselo al total acumulado de espera que ya llevaba
+      p->wait_time += (ticks - p->t_ready_start);
+
+      // Cuenta cada vez que el scheduler le asigna la CPU a este proceso
+      // (no cuenta otros cambios de estado, como cuando el proceso se bloquea por su cuenta)
+      p->n_context_switches++;
+
+
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -412,6 +460,10 @@ void scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
 
+      // ---MEDICION: el proceso volvio a estar RUNNABLE (o cambio de estado) ---
+      // Guardamos el momento en el que iso este cambio parta saber desde que punto volvio a esperar
+      p->t_ready_start = ticks;
+      
       //Ningun proceso se encunetra corriendo en la CPU
       c->proc = 0;
     }
