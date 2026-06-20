@@ -25,8 +25,10 @@ extern int ncpu;
 // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
 
-//ESTRUCUTURA LA CUAL PERMITE GUARDAR LOS DATOS DE UN PROCESO CUANDO SALE DE LA CPU PARA QUE DESPUES VOLVER A QUE LA CPU OBTENGA ESTOS 
-//DATOS PARA QUE PUEDA CONTINUAR EN EL PUNTO EN EL CUAL SE QUEDO 
+// ESTRUCTURA QUE GUARDA LOS REGISTROS DEL PROCESO CUANDO SALE DE LA CPU 
+// (CONTEXT SWITCH), PARA QUE AL VOLVER A EJECUTARSE LA CPU LOS RESTAURE 
+// Y EL PROCESO CONTINÚE DONDE SE QUEDÓ. swtch() ES QUIEN GUARDA Y 
+// RESTAURA ESTOS VALORES.
 struct context {
   uint edi;
   uint esi;
@@ -35,23 +37,23 @@ struct context {
   uint eip;
 };
 
-//ESTRUCTURA LA CUAL DEFINE LOS ESTADOSD DE UN PROCESO
+//ESTRUCTURA LA CUAL DEFINE LOS ESTADOS DE UN PROCESO
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 
 // Per-process state
 
-//DEFINE LA ESTRUCTURA DE UN PROCESO
-//DEFINIENDO LOS DATOS DE UN PROCESO
+// DEFINE LA ESTRUCTURA DE UN PROCESO
+// CONTIENE TODOS LOS DATOS QUE EL SISTEMA NECESITA PARA ADMINISTRAR UN PROCESO
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
-  enum procstate state;        // Process state <- PARA DEFINIR EN QUE ESTADO ESTA EL PROCESO ( FUNDAMENTAL PARA DEFINIR CUANDO SE PUEDE CORRER)
+  enum procstate state;        // DEFINE EN QUÉ ESTADO ESTÁ EL PROCESO (FUNDAMENTAL PARA QUE EL SCHEDULER DECIDA SI PUEDE CORRER)
   int pid;                     // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
-  struct context *context;     // swtch() here to run process <-PARA DEFINIR EL CONTEXTO O LOS DATOS DEL PROCESO (GUARDAR DATOS EN LOS QUUE VA AEL PROCESO)
+  struct context *context;     // GUARDA EL CONTEXTO DEL PROCESO (REGISTROS) PARA RETOMAR SU EJECUCIÓN DONDE QUEDÓ
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files

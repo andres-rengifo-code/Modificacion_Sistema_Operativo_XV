@@ -7,14 +7,16 @@
 #include "proc.h"
 #include "spinlock.h"
 
-// Esta es una estructura de datos la cual crea una tabla de 64 filas
-// ademas de generar un candado con el cual solo una funcion a la ves puede 
-// modificar la tabla(blindando una capa de seguridad)
-
-//TABLA DE PROCESOS 
+//---------------------------------------------------------------------------------
+//TABLA DE PROCESOS (ptable)
+// Estructura de datos que crea una tabla de 64 procesos (NPROC),
+// ademas de generar un candado (spinlock) con el cual solo una funcion a la vesz puede 
+// modificar la tabla, blindando una capa de seguridad ante el acceso 
+// concurrente de varias CPUs.
+//-----------------------------------------------------------------------------------
 struct {
-  struct spinlock lock; // candado el cual da seguridad al modificar la tabla
-  struct proc proc[NPROC]; // <- define la cantidad de procesos que puede manejar la cpu
+  struct spinlock lock;    // Candado el cual da seguridad al modificar la tabla
+  struct proc proc[NPROC]; // Define la cantidad de procesos que puede manejar la cpu
 } ptable;
 
 static struct proc *initproc;
@@ -76,18 +78,21 @@ myproc(void) {
 // state required to run in the kernel.
 // Otherwise return 0.
 
-//FUNCION
+
+//------------------------------------------------------------------------------------
+//FUNCION allocproc()
 //Encargada de buscar un slot vacio (UNUSED) en la tabla de procesos (ptable)
 //y lo prepara para la creacion de un nuevo proceso 
+//------------------------------------------------------------------------------------
 static struct proc* allocproc(void)
 {
   struct proc *p;
   char *sp;
 
-  //Toma el candado para revisar la tabla 
+  // Toma el candado: nadie más puede leer ni modificar ptable mientras se busca 
   acquire(&ptable.lock);
 
-  //Recorre la tabla para buscar slot vacios 
+  //Recorre la tabla para buscar slot vacio
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found; // Si encuentra un slot vacio
@@ -101,7 +106,7 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++; // le asigna un numero unico al proceso
 
-  release(&ptable.lock); // suelta el candado para que otra funcion la pueda utilizar
+  release(&ptable.lock); // suelta el candado para que otra funcion lo pueda utilizar
 
   // Allocate kernel stack.
   // Crea su pila en el kernel 
@@ -193,14 +198,15 @@ growproc(int n)
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
 
-//FUNCION
-//Funcion encargada de crear procesos 
-//Crea los procesos de una manera particular :
-//Crendo una copia del proceso el cual llamo a fork() 
-//Esta copia seria el nuevo proceso donde este nuevo proceso 
-//Puede ser igual al que lo llamo o convertirse en otro proceso 
-//Completamente diferente
-
+//-------------------------------------------------------------------
+//FUNCION fork()
+//Funcion encargada de crear procesos
+//Crea los procesos de una manera particular:
+//Crea una copia exacta del proceso que llamo a fork()
+//Esta copia es el nuevo proceso (hijo), el cual puede seguir
+//ejecutando el mismo codigo que el padre o, mediante exec(),
+//convertirse en un proceso completamente diferente
+//-------------------------------------------------------------------
 int fork(void)
 {
   int i, pid;
@@ -360,6 +366,7 @@ wait(void)
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
 
+//---------------------------------------------------------------------------
 //(Planificador de procesos)
 // ALGORITMO:
 // Round Robin puro:
@@ -367,6 +374,7 @@ wait(void)
 // Le da la CPU al primero que esté RUNNABLE
 // Todos reciben el mismo tiempo (10ms)
 // Sin prioridades, sin favoritismos
+//---------------------------------------------------------------------------
 void scheduler(void)
 {
   //CPU actual ningun proceso corre al inicio 
@@ -391,13 +399,13 @@ void scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+
       //cuando encuentre un proceso que este listo para corer (RUNNABLE) 
       //se le asigna este procecso a la CPU
       c->proc = p;
       switchuvm(p); // Se carga la memoria del proceso 
       p->state = RUNNING; // cambia el estadoa corriendo (RUNNING)
 
-      //Me falta complender estas dos lineas 
       swtch(&(c->scheduler), p->context); //Guarda el contexto de el proceso que sale de la cpu y carga el contexto de el proceso que va a entrar a la cpu
       switchkvm(); // Se limpia la memoria que estaba ocupando el proceso
 
@@ -421,9 +429,13 @@ void scheduler(void)
 // break in the few places where a lock is held but
 // there's no process.
 
+//------------------------------------------------------------------------------------
 //FUNCION
-//Esta funcion se encarda primero que todo quye se cumplan una reglas para depues guardar el contexto de la funcion actual para depues ser utilizada
-//y brindrale el contexto a la CPU del proceso que va a correr 
+//Esta funcion se encarga, primero que todo, de verificar que se cumplan una
+//serie de reglas, y luego de guardar el contexto del proceso
+//actual para mas adelante poder retomarlo, devolviendole el control de la
+//CPU al scheduler
+//-------------------------------------------------------------------------------------
 void sched(void)
 {
   int intena;
@@ -452,9 +464,11 @@ void sched(void)
 
 // Give up the CPU for one scheduling round.
 
+//------------------------------------------------------------------------------------
 //FUNCION
 //Esta funcion se encarga de que el proceso pase de corriendo a listo para correr
-//cuando su turno termina y le cede el turno a otro proceso
+//cuando su turno termina, y le cede el turno a otro proceso
+//----------------------------------------------------------------------------------
 void yield(void)
 {
   //Toma el candado para depues poder modificar su estado
@@ -491,12 +505,15 @@ forkret(void)
 // Atomically release lock and sleep on chan.
 // Reacquires lock when awakened.
 
+//------------------------------------------------------------------------------------
 //FUNCION
-//se encarga de poner los estados que esperan un dato externo en estado bloqueadoo (SlEEPING)
+//Se encarga de poner en estado bloqueado (SLEEPING) a los procesos que
+//estan esperando un dato o evento externo
+//------------------------------------------------------------------------------------
 void
 sleep(void *chan, struct spinlock *lk)
 //Dos parametros
-//1.chan = ondoca lo que esta esperando
+//1.chan =  lo que el proceso esta esperando
 //2.lk = el candado que el proceso tenia antes de SLEEP()
 {
   struct proc *p = myproc(); //Obtiene el proceso actual
@@ -549,9 +566,13 @@ sleep(void *chan, struct spinlock *lk)
 // Wake up all processes sleeping on chan.
 // The ptable lock must be held.
 
-//Funcion
-//Encargada de liberar un proceso que este bloqueado cuando 
-//encuentre lo que faltaba para ser desbloqueada
+//------------------------------------------------------------------------------------
+//FUNCION
+//Encargada de recorrer la tabla y cambiar a RUNNABLE a TODOS los procesos
+//que esten bloqueados esperando un evento especifico (chan)
+//Es privada (static): solo wakeup() puede llamarla, porque asume que
+//ptable.lock ya esta tomado
+//----------------------------------------------------------------------------------
 static void
 wakeup1(void *chan)
 {
@@ -567,8 +588,11 @@ wakeup1(void *chan)
 }
 
 // Wake up all processes sleeping on chan.
+//------------------------------------------------------------------------------------
 //FUNCION
-//encargada de desbloquear el proceso con el candado para la modificacion de los procesos
+//Version publica de wakeup1(): toma el candado de ptable antes de
+//modificar la tabla, ya que wakeup1() por si sola no lo hace
+//-------------------------------------------------------------------------------------
 void
 wakeup(void *chan)
 {
