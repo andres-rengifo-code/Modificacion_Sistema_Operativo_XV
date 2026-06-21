@@ -67,7 +67,13 @@ struct proc {
   int wait_time;          // Guarda todos los periodos de espera es decir suma todos los "t_ready_start" (WAITING TIME)
   int n_context_switches; // Veces que el scheduler le dio la CPU
   int t_completion;        // Momento en que el proceso termino (COMPLETION TIME)
+
+  // --- Campos nuevos para MLFQ ---
+  int queue;        // Cola actual del proceso
+  int ticks_used;    // Ticks consumidos en el quantum actual de su cola
 };
+
+
 
 // Process memory is laid out contiguously, low addresses first:
 //   text

@@ -113,6 +113,10 @@ found:
   p->t_ready_start = ticks; /// Guardamos este momento para definir desde cuando esta en RUNNABLE, ya que casi al instante de ser creado pasa a estar listo
   p->wait_time = 0; // la espera de tiempo inicia en "0"
   p->n_context_switches = 0; //El contador de veces que recibio la CPU arranca en "0"
+  
+  // --- MLFQ: todo proceso nuevo nace en la cola 0 ---
+  p->queue = 0;
+  p->ticks_used = 0;
 
 
   release(&ptable.lock); // suelta el candado para que otra funcion lo pueda utilizar
@@ -414,6 +418,7 @@ void scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu(); 
   c->proc = 0;
+  int q; // Indice de la cola que se esta revisando en esta vuelta
   
   //Se genera un bucle infinito mientras el sistema operativo este encendido
   for(;;){
@@ -422,54 +427,58 @@ void scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock); // Candado para poder modificar la tabla de procesos
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) //Bucle para recorrer la tabla de procesos
-    {
-      //Si el proceso no esta listo para correr (RUNNABLE) continua
-      //recorriendo la tabla  
-      if(p->state != RUNNABLE)
-        continue;
 
-      // ---MEDICION: justo antes de darle la CPU a este proceso ---
+    // Recorre las colas en orden de prioridad: primero la 0, luego la 1...
+    // Solo pasa a la siguiente cola si no encontro ningun RUNNABLE en la actual
+    for(q = 0; q<NUM_QUEUE; q++){
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) //Bucle para recorrer la tabla de procesos
+      {
+        //Si el proceso no esta listo para correr (RUNNABLE) o no se encunetra en la cola q (cola que estamos recorriendo)  continua
+        //recorriendo la tabla  
+        if(p->state != RUNNABLE || p->queue != q)
+          continue;
 
-      // Si es la primera vez que corre, registra el tiempo de respuesta
-      if(p->t_first_run == -1)
-        p->t_first_run = ticks;
+        // ---MEDICION: justo antes de darle la CPU a este proceso ---
 
-      // Acumula cuanto tiempo estuvo esperando desde la ultima vez
-      //calculando cuánto esperó el proceso esta vez en particular, y sumáselo al total acumulado de espera que ya llevaba
-      p->wait_time += (ticks - p->t_ready_start);
+        // Si es la primera vez que corre, registra el tiempo de respuesta
+        if(p->t_first_run == -1)
+          p->t_first_run = ticks;
 
-      // Cuenta cada vez que el scheduler le asigna la CPU a este proceso
-      // (no cuenta otros cambios de estado, como cuando el proceso se bloquea por su cuenta)
-      p->n_context_switches++;
+        // Acumula cuanto tiempo estuvo esperando desde la ultima vez
+        //calculando cuánto esperó el proceso esta vez en particular, y sumáselo al total acumulado de espera que ya llevaba
+        p->wait_time += (ticks - p->t_ready_start);
+
+        // Cuenta cada vez que el scheduler le asigna la CPU a este proceso
+        // (no cuenta otros cambios de estado, como cuando el proceso se bloquea por su cuenta)
+        p->n_context_switches++;
 
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
 
-      //cuando encuentre un proceso que este listo para corer (RUNNABLE) 
-      //se le asigna este procecso a la CPU
-      c->proc = p;
-      switchuvm(p); // Se carga la memoria del proceso 
-      p->state = RUNNING; // cambia el estadoa corriendo (RUNNING)
+        //cuando encuentre un proceso que este listo para corer (RUNNABLE) 
+        //se le asigna este procecso a la CPU
+        c->proc = p;
+        switchuvm(p); // Se carga la memoria del proceso 
+        p->state = RUNNING; // cambia el estadoa corriendo (RUNNING)
 
-      swtch(&(c->scheduler), p->context); //Guarda el contexto de el proceso que sale de la cpu y carga el contexto de el proceso que va a entrar a la cpu
-      switchkvm(); // Se limpia la memoria que estaba ocupando el proceso
+        swtch(&(c->scheduler), p->context); //Guarda el contexto de el proceso que sale de la cpu y carga el contexto de el proceso que va a entrar a la cpu
+        switchkvm(); // Se limpia la memoria que estaba ocupando el proceso
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
 
-      // ---MEDICION: el proceso volvio a estar RUNNABLE (o cambio de estado) ---
-      // Guardamos el momento en el que iso este cambio parta saber desde que punto volvio a esperar
-      p->t_ready_start = ticks;
-      
-      //Ningun proceso se encunetra corriendo en la CPU
-      c->proc = 0;
+        // ---MEDICION: el proceso volvio a estar RUNNABLE (o cambio de estado) ---
+        // Guardamos el momento en el que iso este cambio parta saber desde que punto volvio a esperar
+        p->t_ready_start = ticks;
+        
+        //Ningun proceso se encunetra corriendo en la CPU
+        c->proc = 0;
+      }
     }
-    //Suelta el candado para que otras funciones puedan modificar la tabla ded procesos
+      //Suelta el candado para que otras funciones puedan modificar la tabla ded procesos
     release(&ptable.lock);
-
   }
 }
 

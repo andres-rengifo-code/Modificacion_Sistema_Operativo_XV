@@ -100,11 +100,33 @@ trap(struct trapframe *tf)
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
 
-  // Force process to give up CPU on clock tick.
-  // If interrupts were on while locks held, would need to check nlock.
-  if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER)
-    yield();
+  // --- MLFQ: logica de quantum y degradacion de cola ---
+  //sumale 1 tick consumido al proceso que está corriendo ahora mismo, y si ya gastó todo el quantum de su cola actual, bajalo de cola y hacelo ceder la CPU
+
+
+  // para entrar al bloque se deben de cumplir tres condiciones:
+  // 1. que haya un proceso corriendo
+  // 2. El porceso debe de estar en etado RUNNING
+  // 3. Que la interrupcion por la cual se usa trap() sea por el tiempo timer
+  if(myproc() && myproc()->state == RUNNING && tf->trapno == T_IRQ0 + IRQ_TIMER){
+    
+    //Si cumplio las condiciones, significa que ya transcurrio un tick mientras
+    // este proceso corria: se le suma uno a su contador personal de ticks usados
+    myproc()->ticks_used++;
+
+    //Revisamos si nos entontramos en la cola 3 
+    if(myproc()->queue == NUM_QUEUE - 1){
+      // Cola FCFS (la ultima): nunca cede por tiempo,
+      // solo termina o se bloquea por su cuenta
+    }
+    // SI no esta el la ultima cola 
+    // verificamos si el contador de ticks usados ya llegó (o superó) el límite permitido para esta cola
+    else if(myproc()->ticks_used >= quantum_queue[myproc()->queue]){
+      myproc()->queue++;        //degrada al proceso, sumándole 1 a su número de cola (de la 0 pasa a la 1, de la 1 a la 2, etc.)
+      myproc()->ticks_used = 0; // resetea el contador
+      yield();                  //le quita la CPU
+    }
+  }
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
