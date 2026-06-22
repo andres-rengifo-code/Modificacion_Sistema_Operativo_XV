@@ -405,12 +405,18 @@ wait(void)
 
 //---------------------------------------------------------------------------
 //(Planificador de procesos)
-// ALGORITMO:
-// Round Robin puro:
-// Recorre la tabla de izquierda a derecha
-// Le da la CPU al primero que esté RUNNABLE
-// Todos reciben el mismo tiempo (10ms)
-// Sin prioridades, sin favoritismos
+// ALGORITMO: MLFQ (Multilevel Feedback Queue)
+// Maneja 4 colas con distinta prioridad y distinto quantum:
+//   Cola 0: Round Robin, quantum 20ms (2 ticks) - mayor prioridad
+//   Cola 1: Round Robin, quantum 40ms (4 ticks)
+//   Cola 2: Round Robin, quantum 60ms (6 ticks)
+//   Cola 3: FCFS, sin limite de tiempo       - menor prioridad
+//
+// Todo proceso nuevo entra a la cola 0. Si agota su quantum sin bloquearse,
+// baja a la siguiente cola. Si se bloquea antes de agotar su quantum,
+// permanece en su cola actual al volver a RUNNABLE.
+// El scheduler siempre atiende primero la cola 0 antes de pasar a la 1, y asi
+// sucesivamente: prioridad estricta entre colas.
 //---------------------------------------------------------------------------
 void scheduler(void)
 {

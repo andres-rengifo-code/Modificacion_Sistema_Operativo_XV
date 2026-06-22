@@ -32,7 +32,16 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
+
 //PAGEBREAK: 41
+//---------------------------------------------------------------------------------------
+//FUNCION
+// Manejador central de interrupciones, excepciones y llamadas al sistema.
+// Se ejecuta automaticamente cuando ocurre alguno de estos eventos y segun
+// el tipo de interrupcion (tf->trapno) redirige la ejecucion a la rutina
+// correspondiente. En el caso del timer, es quien se encarga de aplicar
+// la logica de quantum y degradacion de colas del planificador MLFQ.
+//----------------------------------------------------------------------------------------
 void
 trap(struct trapframe *tf)
 {
@@ -97,6 +106,8 @@ trap(struct trapframe *tf)
   // Force process exit if it has been killed and is in user space.
   // (If it is still executing in the kernel, let it keep running
   // until it gets to the regular system call return.)
+
+  // Si el proceso fue marcado para terminar y esta en espacio de usuario, lo termina
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
 
@@ -129,6 +140,8 @@ trap(struct trapframe *tf)
   }
 
   // Check if the process has been killed since we yielded
+
+  // Vuelve a verificar si el proceso fue marcado para terminar luego del yield()
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
 }
