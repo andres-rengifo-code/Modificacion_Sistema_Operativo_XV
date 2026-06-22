@@ -316,10 +316,10 @@ exit(void)
   curproc->t_completion = ticks;
 
   // --- MEDICIONN: imprime el resumen de metricas antes de morir ---
-  cprintf("[METRICAS] pid=%d arrival_time=%d completion_time=%d response_time=%dms waiting_time=%dms turnaround_time=%dms switches=%d\n",
+  cprintf("[METRICAS] pid=%d arrival_time=%dms completion_time=%dms response_time=%dms waiting_time=%dms turnaround_time=%dms switches=%d\n",
         curproc->pid,                                       // Identificador del proceso (PID)
-        curproc->t_created,                                 // Tiempo de llegada (AT)
-        curproc->t_completion,                               // Tiempo de finalizacion (CT)
+        curproc->t_created * 10 ,                                 // Tiempo de llegada (AT)
+        curproc->t_completion * 10,                               // Tiempo de finalizacion (CT)
         (curproc->t_first_run - curproc->t_created) * 10,   // Tiempo de respuesta (RT)
         curproc->wait_time * 10,                             // Tiempo de espera (WT)
         (curproc->t_completion - curproc->t_created) * 10,  // Tiempo de retorno (TAT)
