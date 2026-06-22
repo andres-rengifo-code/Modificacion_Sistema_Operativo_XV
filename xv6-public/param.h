@@ -13,9 +13,3 @@
 #define FSSIZE       1000  // size of file system in blocks
 #define NUM_QUEUE      4   // numero de colas de MLFQ
 
-//Tiempo de cada cola (QUANTUM) un tick corresponde a 10 ms 
-// la cola 0 tiene un (QUANTUM) de 20 ms
-// la cola 1 tiene un (QUANTUM) de 40 ms
-// la cola 2 tiene un (QUANTUM) de 60 ms
-// la cola 3 no tiene (QUANTUM) por que se maneja con FCFS
-static int quantum_queue[NUM_QUEUE] = {2,4,6,0};

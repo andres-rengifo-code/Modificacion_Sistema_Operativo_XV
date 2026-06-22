@@ -7,6 +7,13 @@
 #include "proc.h"
 #include "spinlock.h"
 
+//Tiempo de cada cola (QUANTUM) un tick corresponde a 10 ms 
+// la cola 0 tiene un (QUANTUM) de 20 ms
+// la cola 1 tiene un (QUANTUM) de 40 ms
+// la cola 2 tiene un (QUANTUM) de 60 ms
+// la cola 3 no tiene (QUANTUM) por que se maneja con FCFS
+int quantum_queue[NUM_QUEUE] = {2,4,6,0};
+
 //---------------------------------------------------------------------------------
 //TABLA DE PROCESOS (ptable)
 // Estructura de datos que crea una tabla de 64 procesos (NPROC),
