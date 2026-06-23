@@ -4,7 +4,7 @@ Proyecto de Sistemas Operativos: implementación de un planificador **MLFQ (Mult
 
 ---
 
-## 📋 Estructura del repositorio
+##  Estructura del repositorio
 
 | Rama | Contenido |
 |------|-----------|
@@ -16,7 +16,7 @@ Proyecto de Sistemas Operativos: implementación de un planificador **MLFQ (Mult
 
 ---
 
-## ▶️ Cómo correr el proyecto
+##  Cómo correr el proyecto
 
 ### Requisitos previos
 
@@ -56,7 +56,7 @@ Para salir de QEMU: `Ctrl + A`, luego `X`.
 
 ---
 
-## 🔀 Cambios realizados (rama `Implementacion-MLFQ`)
+##  Cambios realizados (rama `Implementacion-MLFQ`)
 
 Los siguientes archivos fueron modificados respecto al xv6 original del MIT:
 
