@@ -90,6 +90,19 @@ main(int argc, char *argv[])
  
   printf(1, "[TEST] iniciando carga mixta: 4 interactivos + 2 pesados\n");
  
+  // Lanza los 2 procesos de computo pesado
+  for(i = 0; i < 2; i++){
+    pid = fork();
+    if(pid < 0){
+      printf(1, "[TEST] fork fallo (pesado %d)\n", i);
+      exit();
+    }
+    if(pid == 0){
+      heavy_process(i);
+      // heavy_process termina con exit(), no vuelve aqui
+    }
+  }
+
   // Lanza los 4 procesos interactivos
   for(i = 0; i < 4; i++){
     pid = fork();
@@ -103,20 +116,7 @@ main(int argc, char *argv[])
       interactive_process(i);
       // interactive_process termina con exit(), no vuelve aqui
     }
-  }
- 
-  // Lanza los 2 procesos de computo pesado
-  for(i = 0; i < 2; i++){
-    pid = fork();
-    if(pid < 0){
-      printf(1, "[TEST] fork fallo (pesado %d)\n", i);
-      exit();
-    }
-    if(pid == 0){
-      heavy_process(i);
-      // heavy_process termina con exit(), no vuelve aqui
-    }
-  }
+  } 
  
   // El proceso padre espera a que todos los hijos (6 en total) terminen
   for(i = 0; i < 6; i++){
