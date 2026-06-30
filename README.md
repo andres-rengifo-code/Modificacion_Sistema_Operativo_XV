@@ -22,7 +22,6 @@ Proyecto de Sistemas Operativos: implementación de un planificador **MLFQ (Mult
 
 - Ubuntu 22.04 LTS (o equivalente)
 - QEMU versión 6.2.0 o superior
-- Toolchain de compilación cruzada para x86: `gcc`, `make`, `binutils`
 
 Instalar dependencias en Ubuntu:
 
@@ -42,14 +41,14 @@ cd Modificacion_Sistema_Operativo_XV
 
 ```bash
 git checkout Documentacion-XV6-Original
-make qemu-nox
+make qemu
 ```
 
 ### Correr el xv6 modificado (MLFQ)
 
 ```bash
 git checkout Implementacion-MLFQ
-make qemu-nox
+make qemu
 ```
 
 Para salir de QEMU: `Ctrl + A`, luego `X`.
